@@ -1,6 +1,5 @@
 const St = imports.gi.St;
 const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 const Soup = imports.gi.Soup;
 
 // TODO: make this configurable somehow?
