@@ -18,6 +18,20 @@ let statusIcon;
 let statusLabel;
 
 /**
+ * Formats a time as a string to be displayed in the top bar.
+ * @param {Date} time The time to format.
+ */
+function formatTimeString(time) {
+    const isPM = time.getHours() >= 12;
+    let hour12 = (time.getHours() % 12);
+    if (hour12 == 0) {
+        hour12 = 12;
+    }
+
+    return hour12 + ":" + time.getMinutes().toString().padStart(2, "0") + " " + (isPM ? "PM" : "AM");
+}
+
+/**
  * Fetch the latest sunrise/sunset data.
  * @param {boolean} doTomorrow If we're requesting data for tomorrow (because we found out that we're past sunset for today)
  */
@@ -44,12 +58,12 @@ function updateData(doTomorrow) {
         if (now < sunrise) {
             // the sun has not risen yet
             // show the upcoming sunrise time
-            statusLabel.set_text(sunrise.toLocaleTimeString());
+            statusLabel.set_text(formatTimeString(sunrise));
             statusIcon.set_icon_name(iconSunrise);
         } else if (now < sunset) {
             // the sun has not set yet
             // show the upcoming sunset time
-            statusLabel.set_text(sunset.toLocaleTimeString());
+            statusLabel.set_text(formatTimeString(sunset));
             statusIcon.set_icon_name(iconSunset)
         } else if (!doTomorrow) {
             // the sun has set for today
