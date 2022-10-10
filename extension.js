@@ -13,7 +13,7 @@ const iconSunrise = "daytime-sunrise-symbolic";
 
 const sessionSync = new Soup.SessionSync();
 
-let text, button;
+let button;
 let statusIcon;
 let statusLabel;
 
@@ -23,7 +23,6 @@ let statusLabel;
  */
 function updateData(doTomorrow) {
     statusLabel.set_text("Loading...");
-    log("updateData");
 
     const now = new Date();
     if (doTomorrow) {
@@ -65,32 +64,8 @@ function updateData(doTomorrow) {
     });
 }
 
-function _hideHello() {
-    Main.uiGroup.remove_actor(text);
-    text = null;
-}
-
-function _showHello() {
-    log("_showHello");
-    updateData();
-
-    if (!text) {
-        text = new St.Label({ style_class: 'helloworld-label', text: "Hello, world!" });
-        Main.uiGroup.add_actor(text);
-    }
-
-    text.opacity = 255;
-
-    let monitor = Main.layoutManager.primaryMonitor;
-
-    text.set_position(monitor.x + Math.floor(monitor.width / 2 - text.width / 2),
-                      monitor.y + Math.floor(monitor.height / 2 - text.height / 2));
-
-    Tweener.addTween(text,
-                     { opacity: 0,
-                       time: 2,
-                       transition: 'easeOutQuad',
-                       onComplete: _hideHello });
+function handleButtonClick() {
+    updateData(false);
 }
 
 function init() {
@@ -116,7 +91,7 @@ function init() {
     buttonContainer.add_child(statusLabel);
 
     button.set_child(buttonContainer);
-    button.connect("button-press-event", _showHello);
+    button.connect("button-press-event", handleButtonClick);
 
     updateData();
 }
