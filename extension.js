@@ -17,17 +17,51 @@ let text, button;
 let statusIcon;
 let statusLabel;
 
-function updateData() {
-    const msg = Soup.Message.new("GET", "https://api.sunrise-sunset.org/json?lat=" + currentLocation.latitude + "&lng=" + currentLocation.longitude + "&formatted=0");
+/**
+ * Fetch the latest sunrise/sunset data.
+ * @param {boolean} doTomorrow If we're requesting data for tomorrow (because we found out that we're past sunset for today)
+ */
+function updateData(doTomorrow) {
+    statusLabel.set_text("Loading...");
+    log("updateData");
+
+    const now = new Date();
+    if (doTomorrow) {
+        now.setDate(now.getDate() + 1);
+    }
+    const dateString =
+        now.getFullYear() + "-" +
+        (now.getMonth() + 1).toString().padStart(2, "0") + "-" +
+        now.getDate().toString().padStart(2, "0");
+
+    const msg = Soup.Message.new("GET", "https://api.sunrise-sunset.org/json?lat=" + currentLocation.latitude + "&lng=" + currentLocation.longitude + "&date=" + dateString + "&formatted=0");
     sessionSync.queue_message(msg, (session, msg) => {
         const apiData = JSON.parse(msg.response_body.data);
-        const sunset = new Date(apiData.results.sunset);
         const sunrise = new Date(apiData.results.sunrise);
-        log("msg", msg.response_body.data);
-        log("sunset", sunset);
-        log("sunrise", sunrise);
-        statusLabel.set_text(sunset.toLocaleTimeString());
-        statusIcon.set_icon_name(iconSunset);
+        const sunset = new Date(apiData.results.sunset);
+
+        const now = new Date();
+
+        if (now < sunrise) {
+            // the sun has not risen yet
+            // show the upcoming sunrise time
+            statusLabel.set_text(sunrise.toLocaleTimeString());
+            statusIcon.set_icon_name(iconSunrise);
+        } else if (now < sunset) {
+            // the sun has not set yet
+            // show the upcoming sunset time
+            statusLabel.set_text(sunset.toLocaleTimeString());
+            statusIcon.set_icon_name(iconSunset)
+        } else if (!doTomorrow) {
+            // the sun has set for today
+            // we need to request tomorrow's sunrise
+            updateData(true);
+        } else {
+            // something weird has happened
+            // (we requested data for tomorrow, but somehow that sunset is still in the past??)
+            statusLabel.set_text("Error");
+            statusIcon.set_icon_name(iconSunrise);
+        }
     });
 }
 
@@ -77,12 +111,14 @@ function init() {
     buttonContainer.add_child(statusIcon);
 
     statusLabel = new St.Label({
-        text: "Hello, world!"
+        text: "Loading..."
     });
     buttonContainer.add_child(statusLabel);
 
     button.set_child(buttonContainer);
     button.connect("button-press-event", _showHello);
+
+    updateData();
 }
 
 function enable() {
