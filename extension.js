@@ -41,6 +41,21 @@ function formatTimeString(time) {
 	return hour12 + ":" + time.getMinutes().toString().padStart(2, "0") + " " + (isPM ? "PM" : "AM");
 }
 
+function handleError(error) {
+	log("handleError called!");
+
+	let e = error;
+	if (Object.prototype.toString.call(e) != "[object Error]") {
+		e = new Error(error);
+	}
+	logError(e, "Sunrise Indicator");
+
+	statusLabel.set_text("Error");
+	statusIcon.set_icon_name(iconSunrise);
+	displayedTime = null;
+	loadInProgress = false;
+}
+
 /**
  * Fetch the latest sunrise/sunset data.
  * @param {boolean} doTomorrow If we're requesting data for tomorrow (because we found out that we're past sunset for today)
@@ -62,41 +77,47 @@ function updateData(doTomorrow, silent) {
 		(now.getMonth() + 1).toString().padStart(2, "0") + "-" +
 		now.getDate().toString().padStart(2, "0");
 
-	const msg = Soup.Message.new("GET", "https://api.sunrise-sunset.org/json?lat=" + currentLocation.latitude + "&lng=" + currentLocation.longitude + "&date=" + dateString + "&formatted=0");
-	sessionSync.queue_message(msg, (session, msg) => {
-		const apiData = JSON.parse(msg.response_body.data);
-		const sunrise = new Date(apiData.results.sunrise);
-		const sunset = new Date(apiData.results.sunset);
+	try {
+		const msg = Soup.Message.new("GET", "https://api.sunrise-sunset.org/json?lat=" + currentLocation.latitude + "&lng=" + currentLocation.longitude + "&date=" + dateString + "&formatted=0");
+		sessionSync.queue_message(msg, (session, msg) => {
+			try {
+				const apiData = JSON.parse(msg.response_body.data);
+				const sunrise = new Date(apiData.results.sunrise);
+				const sunset = new Date(apiData.results.sunset);
 
-		const now = new Date();
+				const now = new Date();
 
-		if (now < sunrise) {
-			// the sun has not risen yet
-			// show the upcoming sunrise time
-			statusLabel.set_text(formatTimeString(sunrise));
-			statusIcon.set_icon_name(iconSunrise);
-			displayedTime = sunrise;
-		} else if (now < sunset) {
-			// the sun has not set yet
-			// show the upcoming sunset time
-			statusLabel.set_text(formatTimeString(sunset));
-			statusIcon.set_icon_name(iconSunset);
-			displayedTime = sunset;
-		} else if (!doTomorrow) {
-			// the sun has set for today
-			// we need to request tomorrow's sunrise
-			updateData(true, silent);
-			return;
-		} else {
-			// something weird has happened
-			// (we requested data for tomorrow, but somehow that sunset is still in the past??)
-			statusLabel.set_text("Error");
-			statusIcon.set_icon_name(iconSunrise);
-			displayedTime = null;
-		}
+				if (now < sunrise) {
+					// the sun has not risen yet
+					// show the upcoming sunrise time
+					statusLabel.set_text(formatTimeString(sunrise));
+					statusIcon.set_icon_name(iconSunrise);
+					displayedTime = sunrise;
+				} else if (now < sunset) {
+					// the sun has not set yet
+					// show the upcoming sunset time
+					statusLabel.set_text(formatTimeString(sunset));
+					statusIcon.set_icon_name(iconSunset);
+					displayedTime = sunset;
+				} else if (!doTomorrow) {
+					// the sun has set for today
+					// we need to request tomorrow's sunrise
+					updateData(true, silent);
+					return;
+				} else {
+					// something weird has happened
+					// (we requested data for tomorrow, but somehow that sunset is still in the past??)
+					handleError("information for tomorrow is already in the past?");
+				}
 
-		loadInProgress = false;
-	});
+				loadInProgress = false;
+			} catch (e) {
+				handleError(e);
+			}
+		});
+	} catch (e) {
+		handleError(e);
+	}
 }
 
 function handleButtonClick() {
