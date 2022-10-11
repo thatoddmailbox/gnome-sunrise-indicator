@@ -1,1 +1,8 @@
-{"name": "Sunrise Indicator", "description": "Displays sunrise and sunset times in the top bar.", "uuid": "sunrise-indicator@alex.studer.dev", "shell-version": ["3.28.4"]}
+{
+	"name": "Sunrise Indicator",
+	"description": "Displays sunrise and sunset times in the top bar.",
+	"uuid": "sunrise-indicator@alex.studer.dev",
+	"shell-version": [
+		"3.28.4"
+	]
+}
