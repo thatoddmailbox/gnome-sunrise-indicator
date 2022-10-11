@@ -17,6 +17,8 @@ let button;
 let statusIcon;
 let statusLabel;
 
+let loadInProgress = false;
+
 let updateTimerID = null;
 
 /**
@@ -45,6 +47,8 @@ function formatTimeString(time) {
  * @param {boolean} silent If true, hides the fact that we're loading.
  */
 function updateData(doTomorrow, silent) {
+	loadInProgress = true;
+
 	if (!silent) {
 		statusLabel.set_text("Loading...");
 	}
@@ -82,6 +86,7 @@ function updateData(doTomorrow, silent) {
 			// the sun has set for today
 			// we need to request tomorrow's sunrise
 			updateData(true, silent);
+			return;
 		} else {
 			// something weird has happened
 			// (we requested data for tomorrow, but somehow that sunset is still in the past??)
@@ -89,14 +94,26 @@ function updateData(doTomorrow, silent) {
 			statusIcon.set_icon_name(iconSunrise);
 			displayedTime = null;
 		}
+
+		loadInProgress = false;
 	});
 }
 
 function handleButtonClick() {
+	if (loadInProgress) {
+		// don't try loading stuff while we're already loading something
+		return;
+	}
+
 	updateData(false, false);
 }
 
 function handleTimer() {
+	if (loadInProgress) {
+		// don't try loading stuff while we're already loading something
+		return;
+	}
+
 	const now = new Date();
 
 	let needsUpdate = false;
