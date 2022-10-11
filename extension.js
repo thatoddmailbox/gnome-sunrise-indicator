@@ -1,5 +1,6 @@
-const St = imports.gi.St;
+const GLib = imports.gi.GLib;
 const Main = imports.ui.main;
+const St = imports.gi.St;
 const Soup = imports.gi.Soup;
 
 // TODO: make this configurable somehow?
@@ -15,6 +16,14 @@ const sessionSync = new Soup.SessionSync();
 let button;
 let statusIcon;
 let statusLabel;
+
+let updateTimerID = null;
+
+/**
+ * The time that's currently on display in the top bar.
+ * @type {Date | null}
+*/
+let displayedTime = null;
 
 /**
  * Formats a time as a string to be displayed in the top bar.
@@ -33,9 +42,12 @@ function formatTimeString(time) {
 /**
  * Fetch the latest sunrise/sunset data.
  * @param {boolean} doTomorrow If we're requesting data for tomorrow (because we found out that we're past sunset for today)
+ * @param {boolean} silent If true, hides the fact that we're loading.
  */
-function updateData(doTomorrow) {
-	statusLabel.set_text("Loading...");
+function updateData(doTomorrow, silent) {
+	if (!silent) {
+		statusLabel.set_text("Loading...");
+	}
 
 	const now = new Date();
 	if (doTomorrow) {
@@ -59,26 +71,46 @@ function updateData(doTomorrow) {
 			// show the upcoming sunrise time
 			statusLabel.set_text(formatTimeString(sunrise));
 			statusIcon.set_icon_name(iconSunrise);
+			displayedTime = sunrise;
 		} else if (now < sunset) {
 			// the sun has not set yet
 			// show the upcoming sunset time
 			statusLabel.set_text(formatTimeString(sunset));
-			statusIcon.set_icon_name(iconSunset)
+			statusIcon.set_icon_name(iconSunset);
+			displayedTime = sunset;
 		} else if (!doTomorrow) {
 			// the sun has set for today
 			// we need to request tomorrow's sunrise
-			updateData(true);
+			updateData(true, silent);
 		} else {
 			// something weird has happened
 			// (we requested data for tomorrow, but somehow that sunset is still in the past??)
 			statusLabel.set_text("Error");
 			statusIcon.set_icon_name(iconSunrise);
+			displayedTime = null;
 		}
 	});
 }
 
 function handleButtonClick() {
-	updateData(false);
+	updateData(false, false);
+}
+
+function handleTimer() {
+	const now = new Date();
+
+	let needsUpdate = false;
+	if (displayedTime == null) {
+		// we currently are showing nothing or an error
+		needsUpdate = true;
+	} else if (now > displayedTime) {
+		// the current time is past what we're displaying
+		needsUpdate = true;
+	}
+
+	if (needsUpdate) {
+		updateData(false, true);
+	}
 }
 
 function init() {
@@ -111,8 +143,20 @@ function init() {
 
 function enable() {
 	Main.panel._rightBox.insert_child_at_index(button, 0);
+
+	// schedule update timer for every 10 minutes
+	updateTimerID = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 10 * 60, () => {
+		handleTimer();
+
+		return GLib.SOURCE_CONTINUE;
+	});
 }
 
 function disable() {
 	Main.panel._rightBox.remove_child(button);
+
+	if (updateTimerID) {
+		GLib.Source.remove(updateTimerID);
+		updateTimerID = null;
+	}
 }
