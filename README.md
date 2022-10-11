@@ -1,4 +1,6 @@
 # gnome-sunrise-indicator
+![Screenshot](./screenshot.png)
+
 A GNOME Shell extension that adds a sunrise/sunset time indicator to the top bar.
 
 Tested on Pop!_OS 18.04 LTS with GNOME Shell 3.28.4.
